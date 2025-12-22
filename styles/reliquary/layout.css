@@ -1,0 +1,359 @@
+/* ------------------------------------------------------------
+   Reliquary — Layout
+   (Includes: slicer/top controls + main grid + effect picker layout)
+   ------------------------------------------------------------ */
+
+/* ------------------------------------------------------------
+   REAL ESTATE (high-res / ultrawide friendly)
+   ------------------------------------------------------------ */
+
+.tool-shell {
+  width: 100%;
+  max-width: clamp(980px, 92vw, 2200px);
+  margin-inline: auto;
+}
+
+.tool-shell,
+.tool-shell :where(p, li, label, select, input, small) {
+  font-size: 0.94rem;
+}
+
+.tool-shell :where(h3) {
+  font-size: 1.05rem;
+  margin-bottom: 0.6rem;
+}
+
+.tool-shell section,
+.tool-shell article {
+  margin-top: 0.9rem;
+}
+
+/* ------------------------------------------------------------
+   Options panel (SLICER SECTION)
+   ------------------------------------------------------------ */
+
+.options-panel {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 0.6rem;
+  padding: 1.05rem 1.55rem;
+
+  /* allow equal-height pairing with Instructions */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dropdowns side-by-side on top, controls below */
+.options-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+  align-items: end;
+
+  /* take remaining height so controls can sit naturally */
+  flex: 1 1 auto;
+}
+
+/* The first two <label> elements in .options-row are the dropdowns */
+.options-row > label:nth-of-type(1) { grid-column: 1; }
+.options-row > label:nth-of-type(2) { grid-column: 2; }
+
+/* Subtext under fields */
+.field-subtext{
+  display: block;
+  margin-top: 0.28rem;
+  font-size: 0.82rem;
+  font-style: italic;
+  line-height: 1.15;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* Controls span full width below both dropdowns */
+.options-controls {
+  grid-column: 1 / -1;
+
+  /* full width so checkboxes + Start Over span the panel */
+  display: grid;
+  grid-template-columns: 1fr;
+
+  gap: 0.65rem;
+  padding-top: 0.65rem;
+  margin-top: 0.15rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+/* Checkboxes side-by-side, each taking half width */
+.options-controls__left {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: center;
+  width: 100%;
+}
+
+.inline-check {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0;
+  width: 100%;
+}
+
+/* Pico checkbox inputs sometimes carry default margins */
+.inline-check input[type="checkbox"] {
+  margin: 0;
+}
+
+/* Start Over – full width of the panel */
+.options-controls__right {
+  width: 100%;
+}
+
+#startOver {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 0.35rem 1.1rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  border-radius: 0.65rem;
+
+  /* override pico "secondary" */
+  border: 1px solid rgba(205, 185, 255, 0.40) !important;
+  background:
+    radial-gradient(120% 140% at 10% 10%, rgba(140, 180, 255, 0.40), rgba(0,0,0,0) 62%),
+    linear-gradient(135deg,
+      rgba(85, 115, 215, 0.50),
+      rgba(155, 95, 210, 0.30),
+      rgba(0, 0, 0, 0.12)
+    ) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  transition: transform 140ms ease, filter 140ms ease, border-color 140ms ease;
+}
+
+#startOver:hover {
+  border-color: rgba(205, 185, 255, 0.65) !important;
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+#startOver:active {
+  transform: translateY(0px);
+}
+
+#startOver:focus {
+  outline: none;
+}
+
+#startOver:focus-visible {
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.40),
+    0 0 0 3px rgba(120, 170, 255, 0.30),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+/* ------------------------------------------------------------
+   Top layout: Filters + Instructions (MATCHED HEIGHT)
+   ------------------------------------------------------------ */
+
+.top-grid{
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: 1rem;
+  align-items: stretch;
+  margin-top: 0.9rem;
+}
+
+.top-grid__left,
+.top-grid__right{
+  min-width: 0;
+}
+
+.top-grid__left,
+.top-grid__right{
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.top-grid__left > .options-panel,
+.top-grid__right > .instructions-panel{
+  flex: 1 1 auto;
+}
+
+/* Instructions panel */
+.instructions-panel{
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.9rem;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.instructions-panel h3{
+  margin-bottom: 0.5rem;
+}
+
+.instructions-panel :where(p, ul){
+  margin-top: 0.5rem;
+}
+
+.instructions-panel ul{
+  padding-left: 1.15rem;
+}
+
+.instructions-panel > *:last-child{
+  margin-bottom: 0;
+}
+
+/* ------------------------------------------------------------
+   Instructions panel text compacting (TEXT ONLY)
+   ------------------------------------------------------------ */
+
+.instructions-panel p {
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.instructions-panel h4 {
+  margin-top: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+@media (max-width: 900px){
+  .top-grid{
+    grid-template-columns: 1fr;
+  }
+
+  .options-controls__left{
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+}
+
+/* ------------------------------------------------------------
+   Main layout: 1/3 left, 2/3 right
+   ------------------------------------------------------------ */
+
+.main-grid {
+  display: grid;
+  grid-template-columns: clamp(320px, 30vw, 480px) 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .main-grid { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------------------
+   Main grid alignment fix
+   Ensure left Effect Selection panel and right Relic Preview panel
+   start at the same vertical baseline.
+   ------------------------------------------------------------ */
+
+.main-grid .left-column > *:first-child,
+.main-grid .right-column > *:first-child {
+  margin-top: 0 !important;
+}
+
+/* ------------------------------------------------------------
+   LEFT COLUMN (COMPACT MODE)
+   ------------------------------------------------------------ */
+
+.left-column {
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+}
+
+/* One sidebar container for all effects */
+.sidebar-panel {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  margin-top: 0;
+}
+
+/* Tighten each effect section */
+.sidebar-panel .effect-card {
+  margin: 0;
+  padding: 0.5rem 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+}
+
+.sidebar-panel .effect-card:first-child { padding-top: 0; }
+.sidebar-panel .effect-card:last-child { padding-bottom: 0; }
+
+.sidebar-panel .effect-card + .effect-card {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 0.5rem;
+  padding-top: 0.65rem;
+}
+
+/* Headings: smaller + no extra margin */
+.sidebar-panel .effect-card h3 {
+  margin: 0 0 0.45rem 0;
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
+}
+
+/* Subtext count: smaller + closer */
+.effect-card small.subtext {
+  display: block;
+  margin-top: 0.25rem;
+  opacity: 0.75;
+  font-size: 0.86rem;
+}
+
+/* ------------------------------------------------------------
+   EFFECT PICKERS: SIDE-BY-SIDE (SAFE + COMPACT)
+   ------------------------------------------------------------ */
+
+.sidebar-panel .effect-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.85fr) minmax(200px, 1.55fr);
+  gap: 0.55rem;
+  align-items: end;
+}
+
+@media (max-width: 520px) {
+  .sidebar-panel .effect-row { grid-template-columns: 1fr; }
+}
+
+/* Kill Pico spacing and keep labels compact */
+.sidebar-panel .effect-row label {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 0.86rem;
+  opacity: 0.92;
+}
+
+.sidebar-panel .effect-row label > :is(select, input) {
+  margin-top: 0.25rem !important;
+}
+
+/* Slightly shorter selects */
+.sidebar-panel select {
+  padding-top: 0.45rem !important;
+  padding-bottom: 0.45rem !important;
+  min-height: 2.35rem;
+}
+
+/* ------------------------------------------------------------
+   RIGHT COLUMN
+   ------------------------------------------------------------ */
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}

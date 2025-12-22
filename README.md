@@ -1,2 +1,2 @@
-# nightreign-data-tools-dev
-This is the dev version of the Nightreign Data Tools.
+# nightreign-data-tools
+Data tools created for the Elden Ring: Nightreign community.

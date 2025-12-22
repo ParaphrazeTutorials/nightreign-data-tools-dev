@@ -1,0 +1,243 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Nightreign Effect Tool</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="../styles/site.css">
+    <link rel="stylesheet" href="../styles/reliquary/layout.css">
+    <link rel="stylesheet" href="../styles/reliquary/results.css">
+    <link rel="stylesheet" href="../styles/reliquary/components.css">
+    <link rel="stylesheet" href="../styles/reliquary/details.css">
+    <!-- MUST be last -->
+    <link rel="stylesheet" href="../styles/reliquary/overrides.css">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+
+  <body>
+    <main class="app-shell app-grid">
+
+      <!-- HERO -->
+      <header class="hero">
+        <img
+          class="hero-art"
+          src="../Assets/home/Reliquary.png"
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+          decoding="async"
+          onerror="this.remove()"
+        />
+
+        <div class="hero-content">
+          <h1>The Round Table Codex</h1>
+          <h2>Reliquary</h2>
+        </div>
+
+        <div id="heroBuild" class="hero-build" aria-label="Release channel and game version"></div>
+      </header>
+
+      <!-- NAV (global) -->
+      <nav id="globalNav" class="tool-nav" aria-label="Primary navigation"></nav>
+
+      <section class="tool-shell">
+
+        <!-- TOP (Filters + Instructions) -->
+        <section class="top-grid">
+          <div class="top-grid__left">
+            <!-- OPTIONS -->
+            <section class="options-panel">
+              <div class="options-row">
+                <label>
+                  Relic Type
+                  <select id="relicType">
+                    <option value="All" selected>All</option>
+                    <option value="Standard">Standard</option>
+                    <option value="Both">Both</option>
+                    <option value="Depth Of Night">Depth Of Night</option>
+                  </select>
+                  <small class="field-subtext">Filters effects below</small>
+                </label>
+
+                <label>
+                  Relic Color
+                  <select id="relicColor">
+                    <option value="Random" selected>Random</option>
+                    <option value="Red">Red</option>
+                    <option value="Blue">Blue</option>
+                    <option value="Yellow">Yellow</option>
+                    <option value="Green">Green</option>
+                  </select>
+                  <small class="field-subtext">Cosmetic change only</small>
+                </label>
+
+                <div class="options-controls">
+                  <div class="options-controls__left">
+                    <label class="inline-check">
+                      <input type="checkbox" id="showIllegal" />
+                      Show Illegal Combinations
+                    </label>
+
+                    <label class="inline-check">
+                      <input type="checkbox" id="showRaw" />
+                      Show Raw Data
+                    </label>
+                  </div>
+
+                  <div class="options-controls__right">
+                    <button id="startOver" class="secondary" type="button">Start Over</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="top-grid__right">
+            <!-- INSTRUCTIONS -->
+            <section class="instructions-panel">
+
+              <h3>Instructions</h3>
+              <p>
+                Select the effects you want on your relic, and the reliquary will tell you how to make it a legal combination&mdash;if it's possible.
+              </p>
+
+              <h4>Disclaimer</h4>
+              <p>
+                This tool is an <strong>unofficial</strong> community helper for planning effect combinations. It does <strong>not</strong> modify your game, connect to your account,
+                or guarantee anything about online safety. You are responsible for how you use the information provided here and for any changes you make to your save/data.
+              </p>
+              <p>
+                Compatibility rules and outcomes can change with patches, anticheat updates, and server-side checks.
+                If you're not sure whether a change is safe, assume it isn't and keep your relics unedited for online play.
+              </p>
+              <p class="disclaimer-warning">
+                <span style="color: rgba(255, 115, 115, 0.95); font-weight: 800; text-decoration: underline;">
+                  Please do not play online with illegal relics.
+                </span>
+              </p>
+            </section>
+          </div>
+        </section>
+
+        <!-- MAIN GRID -->
+        <section class="main-grid">
+
+          <!-- LEFT -->
+          <section class="left-column">
+
+            <!-- One compact container for all three effects -->
+            <div class="sidebar-panel">
+
+              <article class="effect-card" id="effect1-card">
+                <h3>Effect 1</h3>
+
+                <div class="effect-row">
+                  <label>
+                    Category
+                    <select id="cat1" disabled>
+                      <option value="">— All —</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Effect
+                    <select id="effect1">
+                      <option value="">— Effect 1 —</option>
+                    </select>
+                  </label>
+                </div>
+
+                <small class="subtext" id="count1"></small>
+              </article>
+
+              <article class="effect-card" id="effect2-card">
+                <h3>Effect 2</h3>
+
+                <div class="effect-row">
+                  <label>
+                    Category
+                    <select id="cat2" disabled>
+                      <option value="">— All —</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Effect
+                    <select id="effect2" disabled>
+                      <option value="">— Effect 2 —</option>
+                    </select>
+                  </label>
+                </div>
+
+                <small class="subtext" id="count2"></small>
+              </article>
+
+              <article class="effect-card" id="effect3-card">
+                <h3>Effect 3</h3>
+
+                <div class="effect-row">
+                  <label>
+                    Category
+                    <select id="cat3" disabled>
+                      <option value="">— All —</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Effect
+                    <select id="effect3" disabled>
+                      <option value="">— Effect 3 —</option>
+                    </select>
+                  </label>
+                </div>
+
+                <small class="subtext" id="count3"></small>
+              </article>
+
+            </div>
+          </section>
+
+          <!-- RIGHT -->
+          <section class="right-column">
+
+            <article id="results">
+              <div class="panel-header">
+                <h3>Relic Preview</h3>
+                <span id="relicValidity" class="validity-badge" hidden>Valid</span>
+              </div>
+
+              <div class="relic-preview">
+                <div class="relic-frame">
+                  <img id="relicImg" alt="Relic preview" />
+                </div>
+
+                <div class="relic-effects">
+                  <ul class="chosen-effects" id="chosenList"></ul>
+                </div>
+              </div>
+            </article>
+
+            <article id="details">
+              <div class="panel-header">
+                <h3>Details</h3>
+              </div>
+
+              <div id="detailsBody" class="details-body"></div>
+            </article>
+
+          </section>
+        </section>
+
+        <!-- FOOTER (global) -->
+        <footer id="globalFooter" class="site-footer"></footer>
+
+      </section>
+
+    </main>
+
+    <script type="module" src="./reliquary.js"></script>
+    <script type="module" src="../scripts/chrome.js"></script>
+  </body>
+</html>
