@@ -31,7 +31,8 @@
   width: 100%;
   max-inline-size: min(1200px, 100%);
   margin-inline: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 /* Zoom presets (JS toggles class on .lexicon-wrap) */
@@ -125,8 +126,9 @@
 .lexicon-table-wrap {
   width: 100%;
   max-width: 100%;
-  max-height: clamp(360px, 62vh, 760px);
-  overflow: auto;
+  max-height: clamp(320px, 65vh, 900px);
+  overflow-x: auto !important;
+  overflow-y: auto;
 
   border-radius: 0.5rem;
   border: 1px solid rgba(255, 255, 255, 0.10);
@@ -135,13 +137,13 @@
 /* TABLE */
 table.lexicon-table {
   width: max-content;
-  min-width: 660px;
+  min-width: 1000px;
   border-collapse: separate;
   border-spacing: 0;
 
   font-size: var(--lex-body-rem);
   line-height: 1.1;
-  table-layout: fixed;
+  table-layout: auto; /* allow natural column sizing so width can overflow */
 }
 
 /* COLUMN HEADERS */
@@ -162,9 +164,10 @@ table.lexicon-table thead th {
   white-space: nowrap;
   padding: 0.12rem 0.28rem;
 
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 150px;
+  overflow: visible;
+  max-width: 220px;
+  /* allow dropdown filter to render outside the cell height */
+  position: sticky;
 }
 
 /* Body cells */
@@ -212,6 +215,7 @@ table.lexicon-table td:not(.lexicon-cell--text) {
 .lexicon-th {
   cursor: pointer;
   user-select: none;
+  position: relative;
 }
 
 .lexicon-th:focus {
@@ -225,8 +229,20 @@ table.lexicon-table td:not(.lexicon-cell--text) {
   opacity: 0.8;
 }
 
+.lexicon-th__label {
+  display: inline-block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lexicon-th.is-sorted {
   box-shadow: inset 0 -1px 0 rgba(181, 140, 255, 0.45);
+}
+
+.lexicon-th.is-filtering {
+  z-index: 30;
 }
 
 
@@ -335,6 +351,26 @@ table.lexicon-table td:not(.lexicon-cell--text) {
 }
 
 /* Tiles grid (2x2) — constrained to viewport so all 4 tiles fit */
+
+
+/* ------------------------------------------------------------
+   Lexicon — Top edge alignment with sidebar
+   Home.css adds margin-top to .tool-shell section/article; Lexicon's right grid
+   is a <section>, so it gets pushed down. Zero it here.
+   ------------------------------------------------------------ */
+.tool-shell.lexicon-shell > .lexicon-grid {
+  margin-top: 0;
+}
+
+/* ------------------------------------------------------------
+   Lexicon — Grid alignment reset
+   Ensure left sidebar and right grid align at the very top by
+   removing any UA/framework margins on <article>.
+   ------------------------------------------------------------ */
+.lexicon-grid > .lex-tile {
+  margin: 0;
+}
+
 .lexicon-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -364,13 +400,26 @@ table.lexicon-table td:not(.lexicon-cell--text) {
   min-height: 0; /* critical: allow grid rows to constrain height */
 }
 
+/* Allow the table tile to show scrollbars fully */
+/* Keep tile overflow clipped; scroll happens in the inner wrap */
+.lex-tile[data-tile="table"] {
+  overflow: hidden;
+  padding-bottom: 0.05rem !important; /* tighten bottom only; leave other sides as default */
+}
+
 .lex-tile__header {
   display: grid;
   grid-template-rows: auto auto;
   gap: 0.15rem;
-  padding: 0.45rem 0.75rem;
+  padding: 0.28rem 0.40rem;
   background: rgba(0, 0, 0, 0.22);
   border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Table tile: trim header bottom padding so the grid can sit higher */
+.lex-tile[data-tile="table"] .lex-tile__header {
+  padding: 0.16rem 0.35rem 0.05rem;
+  margin-bottom: 0.05rem;
 }
 
 
@@ -384,11 +433,76 @@ table.lexicon-table td:not(.lexicon-cell--text) {
   gap: 0.75rem;
 }
 
+.lex-tile[data-tile="table"] .lex-tile__header-main {
+  align-items: center;
+}
+
+.lex-table-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lex-tile[data-tile="table"] .lex-tile__actions {
+  align-items: center;
+}
+
 .lex-tile__header-main h3 {
   margin: 0;
   font-size: 0.95rem;
   line-height: 1.1;
   letter-spacing: 0.01em;
+}
+
+input.lexicon-search,
+.lexicon-search[type="search"],
+.lexicon-search {
+  min-width: 180px;
+  max-width: 260px;
+  width: 100%;
+  height: 28px !important;
+  padding: 0 8px !important;
+  border-radius: 0.35rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background: rgba(0, 0, 0, 0.20) !important;
+  color: #f5f7fb !important;
+  font-size: 0.78rem !important;
+  line-height: 28px !important;
+  margin: 0 !important;
+  font-family: inherit;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  vertical-align: middle;
+  transform: translateY(0);
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+.lexicon-search::-webkit-search-decoration,
+.lexicon-search::-webkit-search-cancel-button,
+.lexicon-search::-webkit-search-results-button,
+.lexicon-search::-webkit-search-results-decoration {
+  display: none;
+}
+
+.lex-tile[data-tile="table"] .lexicon-search {
+  height: 28px !important;
+  padding: 0 8px !important;
+  align-self: center;
+}
+
+.lexicon-search::placeholder {
+  color: rgba(245, 247, 251, 0.7);
+}
+
+.lexicon-search:focus {
+  outline: 2px solid rgba(181, 140, 255, 0.55);
+  outline-offset: 2px;
 }
 
 
@@ -402,6 +516,7 @@ table.lexicon-table td:not(.lexicon-cell--text) {
   gap: 0.5rem;
   min-height: unset;
   margin-top: -0.1rem;
+  margin-bottom: 0.18rem; /* add slight breathing room below subheader */
 }
 
 
@@ -438,6 +553,119 @@ table.lexicon-table td:not(.lexicon-cell--text) {
   flex-wrap: nowrap;
   justify-content: flex-end;
 }
+.lexicon-th__inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+}
+
+.lexicon-th__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12rem;
+}
+
+.lexicon-col-filter {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 0.35rem;
+  width: 1.05rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  vertical-align: middle;
+  line-height: 1;
+  align-self: center;
+}
+
+.lexicon-col-filter svg {
+  width: 0.62rem;
+  height: 0.62rem;
+  stroke: rgba(220,220,240,0.95);
+  stroke-width: 1.6;
+  fill: none;
+}
+
+.lexicon-col-filter.is-active,
+.lexicon-col-filter:focus {
+  outline: 1px solid rgba(181, 140, 255, 0.55);
+  outline-offset: 1px;
+  border-color: rgba(181, 140, 255, 0.45);
+  background: rgba(181, 140, 255, 0.16);
+}
+
+.lexicon-col-filter.is-open {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.lexicon-th.has-filter {
+  box-shadow: inset 0 -1px 0 rgba(181, 140, 255, 0.45);
+}
+
+.lexicon-col-filter-input {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  transform: none;
+  width: 100%;
+  min-width: 150px;
+  max-width: 240px;
+  display: inline-block;
+  padding: 0.06rem 0.32rem !important;
+  height: 1.05rem !important;
+  min-height: 0 !important;
+  line-height: 1 !important;
+  border-radius: 0.22rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(5, 7, 10, 0.96);
+  color: #f5f7fb;
+  font-size: 0.68rem;
+  box-sizing: border-box;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
+  z-index: 50;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background-image: none !important;
+}
+
+.lexicon-col-filter-input[hidden],
+.lexicon-col-filter-input[aria-hidden="true"] {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+.lexicon-floating-filter {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: none;
+  width: auto;
+  min-width: 150px;
+  max-width: 260px;
+  display: inline-block;
+  padding: 0.06rem 0.32rem !important;
+  height: 1.05rem !important;
+  min-height: 0 !important;
+  line-height: 1 !important;
+  border-radius: 0.22rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(5, 7, 10, 0.96);
+  color: #f5f7fb;
+  font-size: 0.68rem;
+  box-sizing: border-box;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
+  z-index: 2000;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background-image: none !important;
+}
 
 .lex-tile__expand svg {
   width: 0.98rem;  /* 30% smaller than 1.4rem */
@@ -464,7 +692,7 @@ table.lexicon-table td:not(.lexicon-cell--text) {
 }
 
 .lex-tile__body {
-  padding: 0.85rem 0.9rem;
+  padding: 0.08rem 0.10rem;
   flex: 1 1 auto;
   min-height: 0;   /* critical: enables inner scrollers */
   overflow: hidden;
@@ -472,29 +700,127 @@ table.lexicon-table td:not(.lexicon-cell--text) {
 
 /* Table tile: remove extra chrome and let the table scroll within the tile */
 .lex-tile[data-tile="table"] .lex-tile__body {
-  padding: 0;
+  padding: 0.04rem 0.04rem 0.02rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .lex-tile[data-tile="table"] .lexicon-wrap {
   border: none;
   border-radius: 0;
   background: transparent;
-  padding: 0.85rem 0.9rem;
+  padding: 0 0 0.02rem 0;
   max-inline-size: none;
   margin-inline: 0;
+  width: 100%;
+  display: block;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Override the old vh-based max-height: table should fill the tile body */
 .lex-tile[data-tile="table"] .lexicon-table-wrap {
   height: 100%;
-  max-height: none;
-  overflow: auto;
+  max-height: 100%;
+  overflow-x: auto !important;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 0; /* remove extra bottom inset for tight fit */
+}
+
+.lexicon-grid.is-theater .lex-tile.is-expanded[data-tile="table"] .lexicon-table-wrap {
+  height: 100%;
+  max-height: 100%;
+  overflow-x: auto !important;
+  overflow-y: auto;
+}
+
+.lexicon-grid.is-theater .lex-tile.is-expanded[data-tile="table"] .lexicon-wrap {
+  height: 100%;
+  max-height: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
 }
 
 /* Downloads tile */
 .lex-downloads {
   display: grid;
-  gap: 0.65rem;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  line-height: 1.1;
+}
+
+@media (min-width: 640px) {
+  .lex-downloads {
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+  }
+}
+
+.lex-downloads__section {
+  display: grid;
+  gap: 0.25rem;
+  align-items: start;
+}
+
+.lex-downloads__section-title {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  font-size: 0.78rem;
+}
+
+.lex-downloads__actions {
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.lex-downloads__list {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.lex-downloads__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.1rem 0.35rem;
+  padding: 0.12rem 0.28rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 0.35rem;
+  background: rgba(255,255,255,0.04);
+  color: inherit;
+  text-decoration: none;
+}
+
+.lex-downloads__item:hover {
+  border-color: rgba(181,140,255,0.45);
+  background: rgba(181,140,255,0.10);
+}
+
+.lex-downloads__item-label {
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.lex-downloads__item-meta {
+  font-size: 0.68rem;
+  opacity: 0.75;
+  align-self: center;
+}
+
+.lex-downloads__item-desc {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.lex-downloads__empty {
+  font-size: 0.9rem;
+  opacity: 0.78;
 }
 
 .lexicon-export-btn.secondary {
@@ -847,14 +1173,340 @@ table.lexicon-table td:not(.lexicon-cell--text) {
   width: 22px;
   height: 22px;
 }
+
+
 /* ------------------------------------------------------------
-   Lexicon — Footer span fix
-   The footer lives inside the Lexicon shell grid; ensure it spans both columns.
+   Lexicon — Card Art Controls (sidebar tiles)
+   Match hero-style controls: zoom + x + y
    ------------------------------------------------------------ */
 
-.lexicon-shell > .site-footer,
-.lexicon-shell footer.site-footer {
-  grid-column: 1 / -1;
+.lexicon-sidebar {
+  /* Canonical-style controls for card art */
+  --card-art-zoom: 0.9;
+  --card-art-x: 60%;
+  --card-art-y: 50%;
+}
+
+/* Disable Home tile background-image in Lexicon sidebar; we render art via ::after */
+.lexicon-sidebar .app-tile {
+  background-image: none !important;
+  background-color: transparent;
+}
+
+/* Art layer */
+.lexicon-sidebar .app-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background-image: var(--card-art-src);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+
+  /* hero-like anchor + scale */
+  left: var(--card-art-x);
+  top: var(--card-art-y);
+  width: auto;
+  height: auto;
+  min-width: 100%;
+  min-height: 100%;
+
+  transform: translate(-50%, -50%) scale(var(--card-art-zoom));
+  transform-origin: center;
+
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ensure overlay sits above art, and text above overlay (Lexicon only) */
+.lexicon-sidebar .app-tile::before { z-index: 1; }
+.lexicon-sidebar .app-tile__text  { z-index: 2; }
+
+/* ------------------------------------------------------------
+   Lexicon — Left sidebar app tiles (Home card style)
+   ------------------------------------------------------------ */
+
+.lexicon-apps {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.lexicon-apps .app-tile {
   width: 100%;
-  justify-self: stretch;
+  text-align: left;
+  cursor: pointer;
+
+  /* Button reset so it behaves like the Home link tile */
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  background-color: transparent; /* image is via background-image */
+}
+
+.lexicon-sidebar .app-tile {
+  min-height: 120px; /* slightly tighter than Home */
+}
+
+.lexicon-apps .app-tile:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.28);
+  outline-offset: 2px;
+}
+
+.lexicon-apps .lexicon-module-card.is-active {
+  border-color: rgba(255,255,255,0.26);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset;
+}
+
+
+/* ------------------------------------------------------------
+   Lexicon — Sidebar card stacking fix (text above art)
+   ------------------------------------------------------------ */
+.lexicon-sidebar .app-tile {
+  position: relative;
+  isolation: isolate;
+}
+
+.lexicon-sidebar .app-tile::after {
+  z-index: 0;
+}
+
+.lexicon-sidebar .app-tile::before {
+  z-index: 1;
+}
+
+.lexicon-sidebar .app-tile__text {
+  position: relative;
+  z-index: 2;
+}
+
+
+/* ------------------------------------------------------------
+   Lexicon — Sidebar card stacking (override, last-wins)
+   Force art + overlay behind all content in the button.
+   ------------------------------------------------------------ */
+.lexicon-sidebar .app-tile {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+}
+
+.lexicon-sidebar .app-tile::after {
+  z-index: -2;
+}
+
+.lexicon-sidebar .app-tile::before {
+  z-index: -1;
+}
+
+.lexicon-sidebar .app-tile__meta,
+.lexicon-sidebar .app-tile__text {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* ------------------------------------------------------------
+   Lexicon v2 — Sidebar tiles: half height, title-only, bottom-left
+   ------------------------------------------------------------ */
+
+.lexicon-sidebar .app-tile {
+  min-height: 60px;                 /* ~half of prior 120px */
+  padding: 0.55rem 0.65rem;         /* tighter vertical space */
+}
+
+/* Make the tile content sit at the bottom-left */
+.lexicon-sidebar .app-tile__meta {
+  margin-top: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.lexicon-sidebar .app-tile__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+/* Remove subheader/secondary line inside the tile */
+.lexicon-sidebar .app-tile__text > div:not(.app-tile__title) {
+  display: none;
+}
+
+/* Keep the title crisp in the smaller tile */
+.lexicon-sidebar .app-tile__title {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------
+   Lexicon v3 — Sidebar tiles: tighter vertical spacing
+   ------------------------------------------------------------ */
+
+/* Reduce vertical gap between sidebar cards */
+.lexicon-apps {
+  gap: 0.4rem; /* tighter than prior ~0.75rem */
+}
+
+/* ------------------------------------------------------------
+   Lexicon v7 — Sidebar card art controls (X/Y/Zoom) with bleed
+   Restore X control by returning to element-anchor panning,
+   but oversize the art layer so panning can't reveal blank edges.
+   ------------------------------------------------------------ */
+
+/* Art layer (override, last wins) */
+.lexicon-sidebar .app-tile::after {
+  content: "";
+  position: absolute;
+
+  /* Oversize the layer so X/Y panning never exposes empty space */
+  width: 220%;
+  height: 220%;
+
+  /* Anchor point driven by controls */
+  left: var(--card-art-x);
+  top: var(--card-art-y);
+
+  /* Center on anchor, then zoom */
+  transform: translate(-50%, -50%) scale(var(--card-art-zoom));
+  transform-origin: center;
+
+  background-image: var(--card-art-src);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+
+  pointer-events: none;
+
+  /* Keep art behind overlay + text */
+  z-index: -2;
+}
+
+/* Overlay behind text, above art */
+.lexicon-sidebar .app-tile::before { z-index: -1; }
+
+/* ------------------------------------------------------------
+   Lexicon v8 — Increase art bleed further to prevent zoom cutoff
+   (tiles are short; zoom needs more overscan headroom)
+   ------------------------------------------------------------ */
+
+.lexicon-sidebar .app-tile::after {
+  width: 340%;
+  height: 340%;
+}
+
+/* ------------------------------------------------------------
+   Lexicon v9 — Sidebar cards: REMOVE image logic (Lexicon only)
+   Keep existing card sizing/spacing; apply active/inactive gradients.
+   ------------------------------------------------------------ */
+
+/* Kill any tile images coming from Home styles (Lexicon sidebar only) */
+.lexicon-sidebar .app-tile {
+  background-image: none !important;
+  /* Inactive gradient */
+  background: linear-gradient(
+    90deg,
+    rgba(22, 24, 30, 0.85) 0%,
+    rgba(14, 16, 20, 0.95) 100%
+  );
+}
+
+/* Remove the Lexicon-only art layer entirely */
+.lexicon-sidebar .app-tile::after {
+  content: none !important;
+}
+
+/* Active module gradient */
+.lexicon-sidebar .lexicon-module-card.is-active {
+  background: linear-gradient(
+    90deg,
+    rgba(112, 70, 168, 0.45) 0%,
+    rgba(60, 30, 95, 0.55) 45%,
+    rgba(10, 10, 16, 0.75) 100%
+  );
+}
+
+/* ------------------------------------------------------------
+   Lexicon v10 — Sidebar gradients actually visible
+   Home card overlay (::before) was still masking backgrounds.
+   Remove overlay ONLY for Lexicon sidebar cards.
+   ------------------------------------------------------------ */
+
+/* Remove dark overlay layer so gradients show */
+.lexicon-sidebar .app-tile::before {
+  content: none !important;
+}
+
+/* Re-assert inactive gradient (last-wins safety) */
+.lexicon-sidebar .app-tile {
+  background: linear-gradient(
+    90deg,
+    rgba(22, 24, 30, 0.85) 0%,
+    rgba(14, 16, 20, 0.95) 100%
+  ) !important;
+}
+
+/* Re-assert active gradient */
+.lexicon-sidebar .lexicon-module-card.is-active {
+  background: linear-gradient(
+    90deg,
+    rgba(112, 70, 168, 0.45) 0%,
+    rgba(60, 30, 95, 0.55) 45%,
+    rgba(10, 10, 16, 0.75) 100%
+  ) !important;
+}
+
+/* ------------------------------------------------------------
+   Lexicon v11 — Sidebar cards: visible inactive gradient + centered text
+   ------------------------------------------------------------ */
+
+/* Make inactive gradient more perceptible */
+.lexicon-sidebar .app-tile {
+  background: linear-gradient(
+    90deg,
+    rgba(32, 36, 44, 0.95) 0%,
+    rgba(18, 20, 26, 0.95) 100%
+  ) !important;
+}
+
+/* Center title horizontally + vertically */
+.lexicon-sidebar .app-tile__meta {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lexicon-sidebar .app-tile__text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Keep active gradient as-is */
+.lexicon-sidebar .lexicon-module-card.is-active {
+  background: linear-gradient(
+    90deg,
+    rgba(112, 70, 168, 0.45) 0%,
+    rgba(60, 30, 95, 0.55) 45%,
+    rgba(10, 10, 16, 0.75) 100%
+  ) !important;
+}
+
+/* ------------------------------------------------------------
+   Lexicon v12 — Sidebar cards: left-align text, keep vertical centering
+   ------------------------------------------------------------ */
+
+.lexicon-sidebar .app-tile__meta {
+  justify-content: flex-start;
+}
+
+.lexicon-sidebar .app-tile__text {
+  justify-content: center;
+  align-items: flex-start;
+  text-align: left;
 }

@@ -20,10 +20,10 @@ const dom = {
   tableHead: document.getElementById("lexiconHead"),
   tableBody: document.getElementById("lexiconBody"),
   meta: document.getElementById("lexiconMeta"),
+  searchInput: document.getElementById("lexiconSearch"),
 
   // downloads
-  exportCsvBtn: document.getElementById("lexiconExportCsv"),
-  exportJsonBtn: document.getElementById("lexiconExportJson"),
+  downloadsDynamic: document.getElementById("lexiconDownloadsDynamic"),
 
   // zoom
   zoomButtons: Array.from(document.querySelectorAll(".lexicon-zoom-btn[data-zoom]")),
@@ -44,10 +44,105 @@ const state = {
   sortDir: 0, // 0 none, 1 asc, -1 desc
   typeByCol: new Map(), // col -> "number" | "string"
   zoom: "small", // "small" | "medium" | "large"
+  filters: new Map(),
+  searchTerm: "",
 
   // theater
-  expandedTile: null // "table" | "downloads" | "docs" | "insights" | null
+  expandedTile: null, // "table" | "downloads" | "docs" | "insights" | null
+
+  // downloads
+  downloadsManifest: null
 };
+
+// Single floating filter input appended to body (portal) so it never overlaps headers when hidden
+let floatingFilter = null;
+let floatingFilterCol = null;
+let floatingAnchorTh = null;
+let floatingAnchorBtn = null;
+
+function hideFloatingFilter() {
+  if (!floatingFilter) return;
+  floatingFilter.hidden = true;
+  floatingFilter.style.display = "none";
+  floatingFilter.setAttribute("aria-hidden", "true");
+  if (floatingAnchorTh) floatingAnchorTh.classList.remove("is-filtering");
+  if (floatingAnchorBtn) floatingAnchorBtn.classList.remove("is-open");
+  floatingAnchorTh = null;
+  floatingAnchorBtn = null;
+  floatingFilterCol = null;
+}
+
+function ensureFloatingFilter() {
+  if (floatingFilter) return floatingFilter;
+
+  floatingFilter = document.createElement("input");
+  floatingFilter.type = "text";
+  floatingFilter.className = "lexicon-floating-filter";
+  floatingFilter.autocomplete = "off";
+  floatingFilter.spellcheck = false;
+  floatingFilter.inputMode = "search";
+  floatingFilter.hidden = true;
+  floatingFilter.style.display = "none";
+  floatingFilter.setAttribute("aria-hidden", "true");
+
+  floatingFilter.addEventListener("input", () => {
+    const value = floatingFilter.value || "";
+    const trimmed = value.trim();
+    if (!floatingFilterCol) return;
+
+    if (trimmed === "") {
+      state.filters.delete(floatingFilterCol);
+      hideFloatingFilter();
+      render();
+      return;
+    }
+
+    state.filters.set(floatingFilterCol, value);
+    render();
+  });
+
+  floatingFilter.addEventListener("blur", () => {
+    if (floatingFilterCol && (floatingFilter.value || "").trim() === "") {
+      state.filters.delete(floatingFilterCol);
+    }
+    hideFloatingFilter();
+  });
+
+  window.addEventListener("scroll", hideFloatingFilter, true);
+  window.addEventListener("resize", hideFloatingFilter);
+
+  document.body.appendChild(floatingFilter);
+  return floatingFilter;
+}
+
+function openFloatingFilter(col, th, btn) {
+  ensureFloatingFilter();
+
+  const rect = btn.getBoundingClientRect();
+  floatingFilterCol = col;
+  floatingAnchorTh = th;
+  floatingAnchorBtn = btn;
+
+  const current = state.filters.get(col) || "";
+  floatingFilter.value = current;
+
+  floatingFilter.hidden = false;
+  floatingFilter.removeAttribute("aria-hidden");
+  floatingFilter.style.display = "inline-block";
+
+  const top = rect.bottom + window.scrollY + 4;
+  const left = rect.left + window.scrollX;
+  const minW = Math.max(rect.width + 60, 150);
+  floatingFilter.style.top = `${top}px`;
+  floatingFilter.style.left = `${left}px`;
+  floatingFilter.style.minWidth = `${minW}px`;
+
+  th.classList.add("is-filtering");
+  btn.classList.add("is-open");
+
+  floatingFilter.focus();
+  floatingFilter.select();
+}
 
 function csvEscape(value) {
   const s = value == null ? "" : String(value);
@@ -98,6 +193,21 @@ function inferColumns(rows) {
     }
   }
   return cols;
+}
+
+const PRIORITY_COLUMNS = ["EffectID", "EffectCategory", "EffectDescription"];
+
+function reorderColumns(columns) {
+  const priLower = new Set(PRIORITY_COLUMNS.map(c => c.toLowerCase()));
+
+  const prioritized = [];
+  for (const target of PRIORITY_COLUMNS) {
+    const found = columns.find(c => c.toLowerCase() === target.toLowerCase());
+    if (found) prioritized.push(found);
+  }
+
+  const rest = columns.filter(c => !priLower.has(c.toLowerCase()));
+  return [...prioritized, ...rest];
 }
 
 function inferTypeForColumn(rows, col) {
@@ -185,23 +295,82 @@ function bindZoomButtons() {
   }
 }
 
-function bindDownloads() {
-  if (dom.exportCsvBtn) {
-    dom.exportCsvBtn.addEventListener("click", () => {
-      const rows = getCurrentViewRows();
-      const csv = toCsv(state.columns, rows);
-      const stamp = new Date().toISOString().slice(0, 10);
-      downloadText(`lexicon_${state.module}_${stamp}.csv`, csv, "text/csv;charset=utf-8");
-    });
+function getManifestUrl(moduleKey) {
+  const key = String(moduleKey || "").toLowerCase();
+  if (!key) return "";
+  return new URL(`../downloads/${key}/manifest.json`, window.location.href).toString();
+}
+
+async function loadDownloadsManifest(moduleKey) {
+  state.downloadsManifest = null;
+  const url = getManifestUrl(moduleKey);
+  if (!url) {
+    renderDownloads();
+    return;
   }
 
-  if (dom.exportJsonBtn) {
-    dom.exportJsonBtn.addEventListener("click", () => {
-      const stamp = new Date().toISOString().slice(0, 10);
-      const json = JSON.stringify(state.rawRows, null, 2);
-      downloadText(`lexicon_${state.module}_${stamp}.json`, json, "application/json;charset=utf-8");
-    });
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Failed to load manifest (${res.status})`);
+    const manifest = await res.json();
+    state.downloadsManifest = manifest || null;
+  } catch (err) {
+    console.error(err);
+    state.downloadsManifest = null;
   }
+  renderDownloads();
+}
+
+function renderDownloadsSection(title, items) {
+  if (!items || items.length === 0) {
+    return `
+      <div class="lex-downloads__section">
+        <div class="lex-downloads__section-title">${escapeHtml(title)}</div>
+        <div class="lex-downloads__empty">Unavailable</div>
+      </div>
+    `;
+  }
+
+  const list = items.map(item => {
+    const label = item.label || item.id || "Download";
+    const href = item.href || "#";
+    const fmt = item.format ? String(item.format).toUpperCase() : "";
+    const size = item.size ? String(item.size) : "";
+    const meta = [fmt, size].filter(Boolean).join(" • ");
+    const desc = item.description || "";
+    return `
+      <a class="lex-downloads__item" href="${escapeHtml(href)}" download>
+        <span class="lex-downloads__item-label">${escapeHtml(label)}</span>
+        ${meta ? `<span class="lex-downloads__item-meta">${escapeHtml(meta)}</span>` : ""}
+        ${desc ? `<span class="lex-downloads__item-desc">${escapeHtml(desc)}</span>` : ""}
+      </a>
+    `;
+  }).join("");
+
+  return `
+    <div class="lex-downloads__section">
+      <div class="lex-downloads__section-title">${escapeHtml(title)}</div>
+      <div class="lex-downloads__list">${list}</div>
+    </div>
+  `;
+}
+
+function renderDownloads() {
+  if (!dom.downloadsDynamic) return;
+
+  const m = state.downloadsManifest;
+  if (!m) {
+    dom.downloadsDynamic.innerHTML = `<div class="lex-downloads__empty">No downloads available for this module.</div>`;
+    return;
+  }
+
+  const sections = [
+    renderDownloadsSection("Table data export", m.tableExports),
+    renderDownloadsSection("Raw game files", m.rawGameFiles),
+    renderDownloadsSection("Supplemental files", m.supplementalFiles)
+  ];
+
+  dom.downloadsDynamic.innerHTML = sections.join("");
 }
 
 function thHtml(key) {
@@ -213,8 +382,15 @@ function thHtml(key) {
         role="button" tabindex="0"
         data-col="${escapeHtml(key)}"
         aria-sort="${isActive ? (state.sortDir === 1 ? "ascending" : "descending") : "none"}">
-      <span class="lexicon-th__label">${escapeHtml(key)}</span>
-      <span class="lexicon-th__glyph" aria-hidden="true">${glyph}</span>
+      <div class="lexicon-th__inner">
+        <span class="lexicon-th__label">${escapeHtml(key)}</span>
+        <div class="lexicon-th__controls">
+          <button class="lexicon-col-filter" type="button" title="Filter ${escapeHtml(key)}" aria-label="Filter ${escapeHtml(key)}" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M8 12h8m-4 7h0"/></svg>
+          </button>
+          <span class="lexicon-th__glyph" aria-hidden="true">${glyph}</span>
+        </div>
+      </div>
     </th>
   `;
 }
@@ -235,6 +411,7 @@ function tdHtml(key, value) {
 
 function renderHead(columns) {
   if (!dom.tableHead) return;
+  ensureFloatingFilter();
   dom.tableHead.innerHTML = `<tr>${columns.map(thHtml).join("")}</tr>`;
 
   dom.tableHead.querySelectorAll("th[data-col]").forEach(th => {
@@ -248,6 +425,26 @@ function renderHead(columns) {
         activate();
       }
     });
+
+    const btn = th.querySelector(".lexicon-col-filter");
+    if (!btn) return;
+
+    const val = state.filters.get(col) || "";
+    const active = val.trim() !== "";
+
+    btn.classList.toggle("is-active", active);
+    th.classList.toggle("has-filter", active);
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const isSame = floatingFilterCol === col && floatingAnchorBtn === btn && !floatingFilter?.hidden;
+      hideFloatingFilter();
+      if (!isSame) {
+        openFloatingFilter(col, th, btn);
+      }
+    });
   });
 }
 
@@ -258,14 +455,51 @@ function renderBody(columns, rows) {
   dom.tableBody.innerHTML = out.join("");
 }
 
+function rowMatchesSearch(row, term) {
+  if (!term) return true;
+  const needle = term.toLowerCase();
+  for (const col of state.columns) {
+    const v = row?.[col];
+    if (v == null) continue;
+    const s = String(v).toLowerCase();
+    if (s.includes(needle)) return true;
+  }
+  return false;
+}
+
+function getFilteredRows() {
+  const term = state.searchTerm.trim();
+  const activeFilters = Array.from(state.filters.entries()).filter(([, v]) => v && v.trim() !== "");
+
+  if (!term && activeFilters.length === 0) return state.rawRows;
+
+  return state.rawRows.filter(r => {
+    if (term && !rowMatchesSearch(r, term)) return false;
+
+    for (const [col, value] of activeFilters) {
+      const needle = value.trim().toLowerCase();
+      const cell = r?.[col];
+      if (needle === "") continue;
+      if (cell == null) return false;
+
+      const cellStr = String(cell).toLowerCase();
+      if (!cellStr.includes(needle)) return false;
+    }
+
+    return true;
+  });
+}
+
 function getCurrentViewRows() {
-  return stableSort(state.rawRows.slice(), state.sortKey, state.sortDir);
+  const filtered = getFilteredRows();
+  return stableSort(filtered, state.sortKey, state.sortDir);
 }
 
 function updateMeta() {
   if (!dom.meta) return;
 
-  const rows = state.rawRows.length;
+  const total = state.rawRows.length;
+  const rows = getFilteredRows().length;
   const cols = state.columns.length;
 
   const sortText = state.sortKey && state.sortDir
@@ -273,13 +507,29 @@ function updateMeta() {
     : "";
 
   const modText = state.module ? `• Module: ${state.module}` : "";
-  dom.meta.textContent = `${rows} rows • ${cols} columns ${modText} ${sortText}`.replace(/\s+/g, " ").trim();
+  const filtersActive = state.filters.size ? "• Filters on" : "";
+  const filteredCount = rows !== total ? `• Filtered from ${total}` : "";
+
+  dom.meta.textContent = `${rows} rows • ${cols} columns ${modText} ${filtersActive} ${filteredCount} ${sortText}`.replace(/\s+/g, " ").trim();
+}
+
+/* -------------------------
+   Search
+------------------------- */
+
+function bindSearch() {
+  if (!dom.searchInput) return;
+  dom.searchInput.addEventListener("input", () => {
+    state.searchTerm = String(dom.searchInput.value || "");
+    render();
+  });
 }
 
 function renderInsights() {
   if (!dom.insights) return;
 
-  const rows = state.rawRows.length;
+  const filteredRows = getFilteredRows();
+  const rows = filteredRows.length;
   const cols = state.columns.length;
 
   if (!rows || !cols) {
@@ -289,7 +539,7 @@ function renderInsights() {
 
   const summaries = state.columns.map(col => {
     let nulls = 0;
-    for (const r of state.rawRows) {
+    for (const r of filteredRows) {
       const v = r?.[col];
       if (v == null || v === "") nulls++;
     }
@@ -343,6 +593,7 @@ function render() {
   renderBody(columns, sorted);
   updateMeta();
   renderInsights();
+  renderDownloads();
 }
 
 function toggleSort(col) {
@@ -357,6 +608,10 @@ function toggleSort(col) {
   }
   render();
 }
+
+/* -------------------------
+  Filters (per-column buttons)
+------------------------- */
 
 /* -------------------------
    Theater mode
@@ -431,6 +686,9 @@ function setActiveModule(moduleKey) {
   state.module = key;
   state.dataUrl = url;
 
+  state.searchTerm = "";
+  if (dom.searchInput) dom.searchInput.value = "";
+
   for (const b of dom.moduleButtons) {
     const mk = (b.getAttribute("data-module") || "").toLowerCase();
     b.classList.toggle("is-active", mk === key);
@@ -438,8 +696,10 @@ function setActiveModule(moduleKey) {
 
   state.sortKey = "";
   state.sortDir = 0;
+  state.downloadsManifest = null;
 
   loadData().catch(console.error);
+  loadDownloadsManifest(key).catch(console.error);
 }
 
 function bindModulePicker() {
@@ -467,16 +727,20 @@ async function loadData() {
 
   const rows = await res.json();
   state.rawRows = Array.isArray(rows) ? rows : [];
-  state.columns = inferColumns(state.rawRows);
+  state.columns = reorderColumns(inferColumns(state.rawRows));
+  state.filters.clear();
+  state.searchTerm = "";
+  if (dom.searchInput) dom.searchInput.value = "";
   computeTypeMap(state.rawRows, state.columns);
 
   render();
+  loadDownloadsManifest(state.module).catch(console.error);
 }
 
 async function init() {
   bindZoomButtons();
-  bindDownloads();
   bindTheaterMode();
+  bindSearch();
   bindModulePicker();
 
   setExpandedTile(null);
