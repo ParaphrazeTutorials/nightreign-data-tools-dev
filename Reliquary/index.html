@@ -231,7 +231,7 @@
               <div id="modeTabsChaliceSlot" class="mode-tabs-slot mode-tabs-slot--chalice"></div>
             </div>
             <article class="chalice-panel">
-              <div class="chalice-layout" id="chaliceLayout">
+              <div class="chalice-layout" id="chaliceLayout" data-details-state="collapsed">
                 <div class="chalice-layout__main">
                   <aside class="chalice-filter" aria-label="Effect pool">
                     <div class="panel-header chalice-filter__header">
@@ -311,37 +311,50 @@
                 </div>
 
                 <aside class="chalice-layout__results" id="chaliceResultsPane" aria-label="Generated relics">
-                  <article class="chalice-results">
+                  <article class="chalice-results" id="chaliceDetails" data-details-state="collapsed">
                     <div class="chalice-results__frame">
-                      <div class="details-rail">
-                        <button
-                          id="chaliceResultsToggle"
-                          class="utility-ghost utility-ghost--small chalice-results__toggle"
-                          type="button"
-                          aria-pressed="false"
-                          title="Collapse results panel"
-                        >
-                          <span class="sr-only">Toggle details panel size</span>
-                        </button>
+                      <div class="details-rail" aria-hidden="true">
+                        <div id="chaliceAlertIconStack" class="chalice-alert-icon-stack" hidden aria-hidden="true">
+                          <img id="chaliceAlertIconWarning" class="chalice-alert-icon" alt="Warnings present" hidden />
+                          <img id="chaliceAlertIconError" class="chalice-alert-icon" alt="Errors present" hidden />
+                        </div>
                       </div>
 
                       <div class="details-shell" id="detailsShell">
-                        <div class="panel-header">
-                          <h4>Details</h4>
-                          <div class="panel-header__right">
+                        <div class="panel-header chalice-filter__header chalice-details__header">
+                          <div class="chalice-filter__header-left">
+                            <div class="chalice-filter__title-row chalice-details__title-row">
+                              <h4 class="chalice-details__title">
+                                <span class="chalice-details__title-text">Details</span>
+                              </h4>
+                            </div>
+                          </div>
+                          <div class="chalice-details__actions">
                             <button
-                              id="chaliceResultsToggleAlt"
-                              class="utility-ghost utility-ghost--small chalice-results__toggle chalice-results__toggle--mirror"
+                              id="chaliceDetailsCollapseBtn"
+                              class="utility-ghost utility-ghost--small chalice-details__btn chalice-details__btn--collapse"
                               type="button"
-                              aria-pressed="false"
+                              aria-label="Collapse details"
                               title="Collapse details"
                             >
-                              <span class="sr-only">Toggle details panel size</span>
+                              <span class="sr-only">Collapse details</span>
                             </button>
                           </div>
                         </div>
 
-                        <div class="chalice-results__content" id="chaliceResultsContent">
+                        <div class="chalice-results__content" id="chaliceResultsContent" aria-hidden="true">
+                          <div id="chaliceAlertPanelWarning" class="chalice-alert-panel is-warning" role="status" hidden>
+                            <div class="chalice-alert-panel__header">
+                              <div id="chaliceAlertPanelTitleWarning" class="chalice-alert-panel__title">Warnings detected</div>
+                            </div>
+                            <ul id="chaliceAlertListWarning" class="chalice-alert-panel__list"></ul>
+                          </div>
+                          <div id="chaliceAlertPanelError" class="chalice-alert-panel is-error" role="status" hidden>
+                            <div class="chalice-alert-panel__header">
+                              <div id="chaliceAlertPanelTitleError" class="chalice-alert-panel__title">Errors detected</div>
+                            </div>
+                            <ul id="chaliceAlertListError" class="chalice-alert-panel__list"></ul>
+                          </div>
                           <section class="stat-overview" id="statOverviewSection" aria-label="Stat overview">
                             <div class="stat-overview__header">
                               <div id="statOverviewPortrait" class="stat-overview__portrait" aria-label="Character portrait placeholder"></div>
@@ -396,6 +409,22 @@
                           <div class="chalice-results__takeover-note" id="chaliceResultsTakeoverNote" role="status" hidden>
                             Coming soon: full relic breakdowns in takeover view.
                           </div>
+                        </div>
+                      </div>
+
+                      <div class="chalice-results__full" id="chaliceResultsFullCol" aria-hidden="false">
+                        <div class="chalice-full__top">
+                          <button
+                            id="chaliceResultsToggle"
+                            class="utility-ghost utility-ghost--small chalice-results__toggle"
+                            type="button"
+                            aria-pressed="false"
+                            aria-expanded="false"
+                            aria-controls="chaliceResultsContent"
+                            aria-label="Toggle details panel"
+                          >
+                            <span class="sr-only">Toggle details panel</span>
+                          </button>
                         </div>
                       </div>
                     </div>

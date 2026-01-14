@@ -38,8 +38,9 @@ const autoSortBtn = document.getElementById("autoSortBtn");
 const MODES = { INDIVIDUAL: "individual", CHALICE: "chalice" };
 let activeMode = MODES.INDIVIDUAL;
 
-const RESULTS_VIEW = { COLLAPSED: 0, NORMAL: 1, TAKEOVER: 2 };
-let chaliceResultsView = RESULTS_VIEW.COLLAPSED;
+// Chalice details states: collapsed (header only), partial (default), full (takeover).
+const DETAILS_VIEW = { COLLAPSED: "collapsed", PARTIAL: "partial", FULL: "full" };
+let chaliceDetailsView = DETAILS_VIEW.COLLAPSED;
 
 let rows = [];
 let byId = new Map();
@@ -51,6 +52,15 @@ let selectedClass = "";
 let chaliceData = [];
 let chalicesByCharacter = new Map();
 let selectedChaliceId = "";
+
+function moveNode(node, target, before = null) {
+  if (!node || !target) return;
+  if (before) {
+    target.insertBefore(node, before);
+  } else {
+    target.appendChild(node);
+  }
+}
 
 const chaliceSelections = {
   standard: Array(9).fill(""),
@@ -85,6 +95,8 @@ let effectStatsRows = [];
 let effectStatsByEffectId = new Map();
 let conditionalEffectState = new Map();
 let conditionalEffectStacks = new Map();
+let lastChaliceIssues = { errors: [], warnings: [] };
+let lastChaliceIconOffsets = { warning: null, error: null };
 
 function normalizeChaliceColor(value) {
   if (!value) return "#ffffff";
@@ -186,6 +198,11 @@ function statusIconPath(statusIconId) {
   const id = (statusIconId ?? "").toString().trim();
   if (!id) return "";
   return new URL(`../Assets/icons/reliquary/${id}.png`, window.location.href).toString();
+}
+
+function alertIconUrl(kind) {
+  const file = kind === "error" ? "chalice-error.svg" : "chalice-warning.svg";
+  return new URL(`../Assets/icons/reliquary/${file}`, window.location.href).toString();
 }
 
 function chaliceIconHtml(statusIconId, fallbackText = "") {
@@ -503,73 +520,60 @@ function setChaliceStatus(text) {
   dom.chaliceStatus.textContent = text || "";
 }
 
-function updateCollapsedResultsSummary(stdCount, depthCount, statusText) {
-  if (dom.chaliceResultsCollapsedStandard) dom.chaliceResultsCollapsedStandard.textContent = `${stdCount} Std`;
-  if (dom.chaliceResultsCollapsedDepth) dom.chaliceResultsCollapsedDepth.textContent = `${depthCount} Depth`;
-  if (dom.chaliceResultsCollapsedStatus) dom.chaliceResultsCollapsedStatus.textContent = statusText || "";
-}
-
-function updateResultsToggleLabel(view) {
-  const state = view ?? chaliceResultsView;
-  const primaryLabel = state === RESULTS_VIEW.COLLAPSED
-    ? "Expand details"
-    : state === RESULTS_VIEW.TAKEOVER
-      ? "Collapse details"
-      : "Maximize details";
-
-  const collapseLabel = state === RESULTS_VIEW.TAKEOVER
-    ? "Collapse to normal size"
-    : state === RESULTS_VIEW.NORMAL
-      ? "Collapse to compact"
+function updateDetailsToggleLabel(view) {
+  const state = view ?? chaliceDetailsView;
+  const rightLabel = state === DETAILS_VIEW.FULL
+    ? "Collapse to details"
+    : state === DETAILS_VIEW.PARTIAL
+      ? "Expand details"
       : "Expand details";
 
+  const rightExpanded = state !== DETAILS_VIEW.COLLAPSED;
+
   if (dom.chaliceResultsToggle) {
-    dom.chaliceResultsToggle.setAttribute("aria-pressed", state !== RESULTS_VIEW.NORMAL ? "true" : "false");
-    dom.chaliceResultsToggle.setAttribute("title", primaryLabel);
-    dom.chaliceResultsToggle.setAttribute("aria-label", primaryLabel);
+    dom.chaliceResultsToggle.dataset.detailsState = state;
+    dom.chaliceResultsToggle.setAttribute("aria-pressed", rightExpanded ? "true" : "false");
+    dom.chaliceResultsToggle.setAttribute("aria-expanded", rightExpanded ? "true" : "false");
+    dom.chaliceResultsToggle.setAttribute("title", rightLabel);
+    dom.chaliceResultsToggle.setAttribute("aria-label", rightLabel);
   }
 
-  if (dom.chaliceResultsToggleAlt) {
-    dom.chaliceResultsToggleAlt.setAttribute("aria-pressed", state !== RESULTS_VIEW.COLLAPSED ? "true" : "false");
-    dom.chaliceResultsToggleAlt.setAttribute("title", collapseLabel);
-    dom.chaliceResultsToggleAlt.setAttribute("aria-label", collapseLabel);
+  if (dom.chaliceDetailsCollapseBtn) {
+    const showCollapse = state !== DETAILS_VIEW.COLLAPSED;
+    dom.chaliceDetailsCollapseBtn.hidden = !showCollapse;
+    dom.chaliceDetailsCollapseBtn.setAttribute("aria-hidden", showCollapse ? "false" : "true");
+    dom.chaliceDetailsCollapseBtn.setAttribute("aria-expanded", showCollapse ? "true" : "false");
+    dom.chaliceDetailsCollapseBtn.setAttribute("title", "Collapse details");
+    dom.chaliceDetailsCollapseBtn.setAttribute("aria-label", "Collapse details");
   }
 }
 
-function applyChaliceResultsView(view) {
-  const target = dom.chaliceLayout;
-  const normalized = Object.values(RESULTS_VIEW).includes(view) ? view : RESULTS_VIEW.NORMAL;
-  chaliceResultsView = normalized;
+function applyChaliceDetailsView(view) {
+  const normalized = Object.values(DETAILS_VIEW).includes(view) ? view : DETAILS_VIEW.PARTIAL;
+  chaliceDetailsView = normalized;
 
-  if (target) {
-    target.classList.toggle("is-results-collapsed", normalized === RESULTS_VIEW.COLLAPSED);
-    target.classList.toggle("is-results-takeover", normalized === RESULTS_VIEW.TAKEOVER);
-  }
+  if (dom.chaliceLayout) dom.chaliceLayout.dataset.detailsState = normalized;
+  if (dom.chaliceResultsShell) dom.chaliceResultsShell.dataset.detailsState = normalized;
+  if (dom.chaliceResultsContent) dom.chaliceResultsContent.setAttribute("aria-hidden", normalized === DETAILS_VIEW.COLLAPSED ? "true" : "false");
 
-  if (dom.chaliceResultsCollapsed) {
-    dom.chaliceResultsCollapsed.setAttribute("aria-hidden", normalized === RESULTS_VIEW.COLLAPSED ? "false" : "true");
-  }
-
-  updateResultsToggleLabel(normalized);
+  updateDetailsToggleLabel(normalized);
   renderChaliceStatOverview();
+  renderChaliceAlerts(lastChaliceIssues);
+  // Re-align alert icons when the view state changes so collapsed state picks up offsets
+  positionChaliceAlertIcons();
 }
 
-function cycleChaliceResultsView() {
-  const next = chaliceResultsView === RESULTS_VIEW.COLLAPSED
-    ? RESULTS_VIEW.NORMAL
-    : chaliceResultsView === RESULTS_VIEW.NORMAL
-      ? RESULTS_VIEW.TAKEOVER
-      : RESULTS_VIEW.COLLAPSED;
-  applyChaliceResultsView(next);
+function cycleChaliceDetailsView() {
+  const next = chaliceDetailsView === DETAILS_VIEW.COLLAPSED
+    ? DETAILS_VIEW.PARTIAL
+    : chaliceDetailsView === DETAILS_VIEW.PARTIAL
+      ? DETAILS_VIEW.FULL
+      : DETAILS_VIEW.PARTIAL;
+  applyChaliceDetailsView(next);
 }
 
-function collapseChaliceResultsView() {
-  const next = chaliceResultsView === RESULTS_VIEW.TAKEOVER
-    ? RESULTS_VIEW.NORMAL
-    : chaliceResultsView === RESULTS_VIEW.NORMAL
-      ? RESULTS_VIEW.COLLAPSED
-      : RESULTS_VIEW.COLLAPSED;
-  applyChaliceResultsView(next);
+function expandChaliceDetailsToFull() {
+  applyChaliceDetailsView(DETAILS_VIEW.FULL);
 }
 
 function syncModeUI() {
@@ -621,12 +625,10 @@ function syncModeUI() {
   moveNode(dom.startOverBtn, startOverSlot);
 
   if (isChalice) {
-    applyChaliceResultsView(chaliceResultsView);
+    applyChaliceDetailsView(chaliceDetailsView);
   } else {
-    if (dom.chaliceLayout) {
-      dom.chaliceLayout.classList.remove("is-results-collapsed", "is-results-takeover");
-    }
-    if (dom.chaliceResultsCollapsed) dom.chaliceResultsCollapsed.setAttribute("aria-hidden", "true");
+    if (dom.chaliceLayout) dom.chaliceLayout.removeAttribute("data-details-state");
+    if (dom.chaliceResultsShell) dom.chaliceResultsShell.removeAttribute("data-details-state");
   }
 }
 
@@ -2768,6 +2770,34 @@ function chaliceRow(effectId) {
   return getRow(effectId) || getAnyRow(effectId) || null;
 }
 
+function computeChaliceStackingIssues() {
+  const counts = new Map();
+  const ids = [...chaliceSelections.standard, ...chaliceSelections.depth].filter(Boolean);
+  ids.forEach(id => counts.set(id, (counts.get(id) || 0) + 1));
+
+  const errors = [];
+  const warnings = [];
+
+  counts.forEach((count, id) => {
+    if (count <= 1) return;
+    const row = chaliceRow(id);
+    const meta = selfStackingMeta(row?.SelfStacking);
+    const name = row?.EffectDescription ?? `Effect ${id}`;
+    const base = `${name} is selected ${count} times`;
+
+    if (meta.modifier === "no") {
+      errors.push(`${base}, but it does not self-stack.`);
+      return;
+    }
+
+    if (meta.modifier === "unknown") {
+      warnings.push(`${base}, and stacking for this effect is unknown.`);
+    }
+  });
+
+  return { errors, warnings };
+}
+
 function computeChaliceBlockedCompat(slotIdx) {
   const blocked = new Set();
   const effects = chaliceSelections.depth;
@@ -3674,10 +3704,10 @@ function renderConditionalEffectLists(effectIds) {
 }
 
 function renderChaliceStatOverview() {
-  const isTakeover = chaliceResultsView === RESULTS_VIEW.TAKEOVER;
-  if (dom.statOverviewSection) dom.statOverviewSection.hidden = isTakeover;
-  if (dom.chaliceResultsTakeoverNote) dom.chaliceResultsTakeoverNote.hidden = !isTakeover;
-  if (isTakeover) return;
+  const isFull = chaliceDetailsView === DETAILS_VIEW.FULL;
+  if (dom.statOverviewSection) dom.statOverviewSection.hidden = isFull;
+  if (dom.chaliceResultsTakeoverNote) dom.chaliceResultsTakeoverNote.hidden = !isFull;
+  if (isFull) return;
 
   resetVitalsPlaceholders();
 
@@ -3715,7 +3745,169 @@ function updateChaliceStatusFromResults(standard, depth) {
   if (blockedCount) statusParts.push(`${blockedCount} combos need a curse and were skipped.`);
   const statusText = statusParts.join(" | ");
   setChaliceStatus(statusText);
-  updateCollapsedResultsSummary(standard.combos.length, depth.combos.length, statusText);
+}
+
+function renderChaliceAlerts(issues) {
+  // Cache latest issues so view changes can re-run alignment without recomputing
+  lastChaliceIssues = issues || { errors: [], warnings: [] };
+
+  const layout = dom.chaliceLayout;
+  const iconStack = dom.chaliceAlertIconStack;
+  const iconError = dom.chaliceAlertIconError;
+  const iconWarning = dom.chaliceAlertIconWarning;
+  const panelWarn = dom.chaliceAlertPanelWarning;
+  const panelWarnTitle = dom.chaliceAlertPanelTitleWarning;
+  const listWarn = dom.chaliceAlertListWarning;
+  const panelErr = dom.chaliceAlertPanelError;
+  const panelErrTitle = dom.chaliceAlertPanelTitleError;
+  const listErr = dom.chaliceAlertListError;
+
+  if (!panelWarn || !panelErr || !listWarn || !listErr) return;
+
+  const errors = Array.isArray(issues?.errors) ? issues.errors : [];
+  const warnings = Array.isArray(issues?.warnings) ? issues.warnings : [];
+
+  const hasErrors = errors.length > 0;
+  const hasWarnings = warnings.length > 0;
+  const hasAny = hasErrors || hasWarnings;
+
+  if (!hasAny) {
+    if (layout) layout.classList.remove("has-chalice-alerts");
+    panelWarn.hidden = true;
+    panelWarn.setAttribute("aria-hidden", "true");
+    listWarn.innerHTML = "";
+    panelErr.hidden = true;
+    panelErr.setAttribute("aria-hidden", "true");
+    listErr.innerHTML = "";
+    if (iconStack) {
+      iconStack.hidden = false;
+      iconStack.setAttribute("aria-hidden", "false");
+    }
+    if (iconError) {
+      iconError.hidden = true;
+      iconError.removeAttribute("src");
+    }
+    if (iconWarning) {
+      iconWarning.hidden = true;
+      iconWarning.removeAttribute("src");
+    }
+    return;
+  }
+
+  if (layout) layout.classList.add("has-chalice-alerts");
+  const showErrorIcon = hasErrors;
+  const showWarningIcon = hasWarnings;
+
+  if (iconStack) {
+    iconStack.hidden = false;
+    iconStack.setAttribute("aria-hidden", "false");
+  }
+
+  if (iconError) {
+    if (showErrorIcon) {
+      iconError.src = alertIconUrl("error");
+      iconError.alt = "Errors present";
+      iconError.hidden = false;
+    } else {
+      iconError.hidden = true;
+      iconError.removeAttribute("src");
+    }
+  }
+
+  if (iconWarning) {
+    if (showWarningIcon) {
+      iconWarning.src = alertIconUrl("warning");
+      iconWarning.alt = "Warnings present";
+      iconWarning.hidden = false;
+    } else {
+      iconWarning.hidden = true;
+      iconWarning.removeAttribute("src");
+    }
+  }
+
+  // warnings panel
+  if (hasWarnings) {
+    const warningMsg = warnings
+      .map(text => `<li class="chalice-alert__item chalice-alert__item--warning">${escapeHtml(text)}</li>`)
+      .join("");
+    listWarn.innerHTML = warningMsg;
+    panelWarn.hidden = false;
+    panelWarn.setAttribute("aria-hidden", "false");
+    if (panelWarnTitle) {
+      panelWarnTitle.textContent = warnings.length > 1 ? "Warnings detected" : "Warning detected";
+    }
+  } else {
+    listWarn.innerHTML = "";
+    panelWarn.hidden = true;
+    panelWarn.setAttribute("aria-hidden", "true");
+  }
+
+  // errors panel
+  if (hasErrors) {
+    const errorMsg = errors
+      .map(text => `<li class="chalice-alert__item chalice-alert__item--error">${escapeHtml(text)}</li>`)
+      .join("");
+    listErr.innerHTML = errorMsg;
+    panelErr.hidden = false;
+    panelErr.setAttribute("aria-hidden", "false");
+    if (panelErrTitle) {
+      panelErrTitle.textContent = errors.length > 1 ? "Errors detected" : "Error detected";
+    }
+  } else {
+    listErr.innerHTML = "";
+    panelErr.hidden = true;
+    panelErr.setAttribute("aria-hidden", "true");
+  }
+
+  positionChaliceAlertIcons();
+}
+
+function positionChaliceAlertIcons() {
+  const rail = dom.chaliceAlertIconStack;
+  if (!rail || rail.hidden) return;
+
+  const details = dom.chaliceDetails;
+  const isCollapsed = details?.dataset?.detailsState === "collapsed";
+
+  const warnIcon = dom.chaliceAlertIconWarning;
+  const errIcon = dom.chaliceAlertIconError;
+
+  if (isCollapsed) {
+    positionCollapsedAlertIcons(warnIcon, errIcon, rail);
+    return;
+  }
+
+  const warnHeader = dom.chaliceAlertPanelWarning?.querySelector(".chalice-alert-panel__header");
+  const errHeader = dom.chaliceAlertPanelError?.querySelector(".chalice-alert-panel__header");
+
+  const railRect = rail.getBoundingClientRect();
+  if (!railRect || !railRect.height) return;
+
+  const placeIcon = (iconEl, headerEl, key) => {
+    if (!iconEl || iconEl.hidden || !headerEl) {
+      if (iconEl) iconEl.style.top = "";
+      lastChaliceIconOffsets[key] = null;
+      return;
+    }
+    const headerRect = headerEl.getBoundingClientRect();
+    const iconHeight = iconEl.getBoundingClientRect().height || 0;
+    const targetCenter = headerRect.top + headerRect.height * 0.5;
+    const offset = targetCenter - railRect.top - iconHeight * 0.5 - 4;
+    const clamped = Math.max(0, offset);
+    iconEl.style.top = `${clamped}px`;
+    lastChaliceIconOffsets[key] = clamped;
+  };
+
+  placeIcon(warnIcon, warnHeader, "warning");
+  placeIcon(errIcon, errHeader, "error");
+}
+
+function positionCollapsedAlertIcons(warnIcon, errIcon, rail) {
+  // Flex layout + CSS padding-top handles positioning; clear inline tops
+  if (rail) rail.style.paddingTop = "";
+  [warnIcon, errIcon].forEach(icon => {
+    if (icon) icon.style.top = "";
+  });
 }
 
 function renderChaliceResults() {
@@ -3726,6 +3918,8 @@ function renderChaliceResults() {
 
   updateChaliceStatusFromResults(standard, depth);
   renderChaliceStatOverview();
+  const stackingIssues = computeChaliceStackingIssues();
+  renderChaliceAlerts(stackingIssues);
 }
 
 function updateChaliceCounts() {
@@ -4058,15 +4252,16 @@ async function load() {
     dom.chaliceAddDepth.addEventListener("click", () => openQuickChalicePicker("depth", dom.chaliceAddDepth));
   }
 
-  if (dom.chaliceResultsToggle) {
-    dom.chaliceResultsToggle.addEventListener("click", () => cycleChaliceResultsView());
+  if (dom.chaliceDetailsCollapseBtn) {
+    dom.chaliceDetailsCollapseBtn.addEventListener("click", () => applyChaliceDetailsView(DETAILS_VIEW.COLLAPSED));
   }
-  if (dom.chaliceResultsToggleAlt) {
-    dom.chaliceResultsToggleAlt.addEventListener("click", () => collapseChaliceResultsView());
+
+  if (dom.chaliceResultsToggle) {
+    dom.chaliceResultsToggle.addEventListener("click", () => cycleChaliceDetailsView());
   }
 
   renderChaliceUI();
-  applyChaliceResultsView(chaliceResultsView);
+  applyChaliceDetailsView(chaliceDetailsView);
   syncModeUI();
   updateUI("init");
 }

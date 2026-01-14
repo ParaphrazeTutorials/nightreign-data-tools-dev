@@ -83,13 +83,21 @@ export function getDom() {
     // Results panel state
     chaliceLayout: document.getElementById("chaliceLayout"),
     chaliceResultsPane: document.getElementById("chaliceResultsPane"),
+    chaliceResultsShell: document.getElementById("chaliceDetails"),
+    detailsShell: document.getElementById("detailsShell"),
+    chaliceDetailsExpandBtn: document.getElementById("chaliceDetailsExpandBtn"),
     chaliceResultsToggle: document.getElementById("chaliceResultsToggle"),
-    chaliceResultsToggleAlt: document.getElementById("chaliceResultsToggleAlt"),
     chaliceResultsContent: document.getElementById("chaliceResultsContent"),
     chaliceResultsTakeoverNote: document.getElementById("chaliceResultsTakeoverNote"),
-    chaliceResultsCollapsed: document.getElementById("chaliceResultsCollapsed"),
-    chaliceResultsCollapsedStandard: document.getElementById("chaliceResultsCollapsedStandard"),
-    chaliceResultsCollapsedDepth: document.getElementById("chaliceResultsCollapsedDepth"),
-    chaliceResultsCollapsedStatus: document.getElementById("chaliceResultsCollapsedStatus")
+    chaliceAlertIconStack: document.getElementById("chaliceAlertIconStack"),
+    chaliceAlertIconError: document.getElementById("chaliceAlertIconError"),
+    chaliceAlertIconWarning: document.getElementById("chaliceAlertIconWarning"),
+    chaliceAlertPanelWarning: document.getElementById("chaliceAlertPanelWarning"),
+    chaliceAlertPanelTitleWarning: document.getElementById("chaliceAlertPanelTitleWarning"),
+    chaliceAlertListWarning: document.getElementById("chaliceAlertListWarning"),
+    chaliceAlertPanelError: document.getElementById("chaliceAlertPanelError"),
+    chaliceAlertPanelTitleError: document.getElementById("chaliceAlertPanelTitleError"),
+    chaliceAlertListError: document.getElementById("chaliceAlertListError"),
+    chaliceDetailsCollapseBtn: document.getElementById("chaliceDetailsCollapseBtn"),
   };
 }
